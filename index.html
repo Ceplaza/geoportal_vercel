@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Geoportal Biodiversidad - UCuenca</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1><i class="fas fa-leaf"></i> Geoportal Biodiversidad</h1>
+    <p>Universidad de Cuenca</p>
+  </div>
+
+  <div id="search-box">
+    <div class="search-wrapper">
+      <i class="fas fa-search"></i>
+      <input type="text" id="search-input" placeholder="Buscar capa..." />
+    </div>
+  </div>
+
+  <div id="layer-controls"></div>
+
+  <div class="legend-section" id="legend"></div>
+
+  <div id="sidebar-footer">
+    <i class="fas fa-database"></i> Fuente: Supabase PostGIS &middot; SRID 4326
+  </div>
+</div>
+
+<div id="map-container">
+  <button id="toggle-sidebar" title="Mostrar/ocultar panel"><i class="fas fa-bars"></i></button>
+  <div id="map"></div>
+  <div id="loading-overlay"><div class="spinner"></div><p id="loading-text">Cargando...</p></div>
+  <div id="stats-bar"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
