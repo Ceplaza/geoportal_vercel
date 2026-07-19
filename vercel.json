@@ -1,6 +1,5 @@
 {
-  "buildCommand": "node build.js",
+  "buildCommand": "npm run build",
   "outputDirectory": ".",
-  "framework": null,
-  "installCommand": "echo skipping"
+  "framework": null
 }
