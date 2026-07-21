@@ -584,6 +584,67 @@ map.on('popupopen', function(e) {
   }
 });
 
+// === Barra de escala ===
+L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 200 }).addTo(map);
+
+// === Coordenadas del cursor ===
+const CoordsControl = L.Control.extend({
+  options: { position: 'bottomright' },
+  onAdd: function() {
+    this._container = L.DomUtil.create('div', 'leaflet-control-coords');
+    this._container.title = 'Coordenadas del cursor (WGS84)';
+    this._container.innerHTML = '—';
+    return this._container;
+  },
+  update: function(lat, lng) {
+    this._container.innerHTML = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  }
+});
+const coordsControl = new CoordsControl().addTo(map);
+map.on('mousemove', function(e) { coordsControl.update(e.latlng.lat, e.latlng.lng); });
+map.on('mouseout', function() { coordsControl.update(NaN, NaN); });
+
+// === Mi Ubicación ===
+const LocationControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd: function() {
+    this._btn = L.DomUtil.create('button', 'leaflet-control-location');
+    this._btn.title = 'Mi ubicación';
+    this._btn.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
+    this._btn.addEventListener('click', this._locate.bind(this));
+    L.DomEvent.disableClickPropagation(this._btn);
+    return this._btn;
+  },
+  _marker: null,
+  _locate: function() {
+    if (!navigator.geolocation) { alert('Geolocalización no soportada.'); return; }
+    this._btn.classList.add('locating');
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        this._btn.classList.remove('locating');
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (this._marker) map.removeLayer(this._marker);
+        this._marker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: 'my-location-icon',
+            html: '<div class="pulse-dot"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          })
+        }).addTo(map).bindPopup('Mi ubicación').openPopup();
+        map.setView([lat, lng], 15);
+      }.bind(this),
+      function(err) {
+        this._btn.classList.remove('locating');
+        alert('No se pudo obtener la ubicación: ' + err.message);
+      }.bind(this),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+});
+new LocationControl().addTo(map);
+
 buildSidebar();
 buildLegend();
 updateUI();

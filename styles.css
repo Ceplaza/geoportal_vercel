@@ -148,6 +148,38 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
 .popup-link { display: inline-flex; align-items: center; gap: 4px; color: #10b981; text-decoration: none; font-size: 12px; margin-top: 8px; }
 .popup-link:hover { text-decoration: underline; }
 
+/* Coordenadas del cursor */
+.leaflet-control-coords {
+  background: #1e293be6; backdrop-filter: blur(8px); border: 1px solid #334155;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; font-family: 'Consolas', monospace;
+  color: #94a3b8; white-space: nowrap; letter-spacing: 0.3px;
+}
+
+/* Botón Mi Ubicación */
+.leaflet-control-location {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid #334155;
+  background: #1e293be6; backdrop-filter: blur(8px); color: #94a3b8;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: all 0.2s ease;
+}
+.leaflet-control-location:hover { background: #334155; color: #e2e8f0; }
+.leaflet-control-location.locating { pointer-events: none; opacity: 0.6; }
+.leaflet-control-location.locating i { animation: pulse-spin 1s linear infinite; }
+@keyframes pulse-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Marcador pulsante de ubicación */
+.my-location-icon { background: none; border: none; }
+.pulse-dot {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(16,185,129,0.25); position: relative;
+}
+.pulse-dot::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  border-radius: 50%; background: #10b981;
+  box-shadow: 0 0 6px rgba(16,185,129,0.6);
+}
+
 @media (max-width: 768px) {
   #sidebar { position: absolute; height: 100%; z-index: 1000; }
   #sidebar.collapsed { transform: translateX(-320px); }
