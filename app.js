@@ -45,7 +45,7 @@ const LAYERS = [
     icon: 'fa-seedling',
     color: '#a855f7',
     geomType: 'point',
-    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu'],
+    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu', 'scientific'],
     imageField: 'image_url',
     linkField: 'url',
     labelField: 'common_nam',
@@ -100,6 +100,32 @@ const LAYER_METADATA = {
     fields: ['name', 'waterway', 'intermitte', 'width', 'source', 'wikidata'],
     updateDate: '2024',
     responsible: 'OpenStreetMap'
+  }
+};
+
+const FILTERABLE_LAYERS = {
+  ave_ucuenca: {
+    name: 'Aves',
+    dropdowns: [
+      { field: 'taxon_fami', label: 'Familia' },
+      { field: 'taxon_orde', label: 'Orden' }
+    ],
+    searches: [
+      { field: 'common_nam', label: 'Nombre comun' },
+      { field: 'taxon_spec', label: 'Nombre cientifico' }
+    ],
+    optionalDropdowns: []
+  },
+  flora_ucuenca: {
+    name: 'Flora',
+    dropdowns: [
+      { field: 'taxon_fami', label: 'Familia' }
+    ],
+    searches: [
+      { field: 'common_nam', label: 'Nombre comun' },
+      { field: 'scientific', label: 'Nombre cientifico' }
+    ],
+    optionalDropdowns: ['life_stage', 'taxon_kingdom', 'establishment_means']
   }
 };
 
@@ -158,6 +184,8 @@ new BaseMapControl().addTo(map);
 const activeLayers = {};
 const layerCounts = {};
 let floraConteosCache = {};
+const layerRawData = {};
+let activeFilterLayer = null;
 
 function showLoading(text) {
   document.getElementById('loading-overlay').style.display = 'block';
@@ -490,6 +518,16 @@ async function toggleLayer(layerId) {
   if (activeLayers[layerId]) {
     map.removeLayer(activeLayers[layerId]);
     delete activeLayers[layerId];
+    if (FILTERABLE_LAYERS[layerId]) {
+      delete layerRawData[layerId];
+      if (activeFilterLayer === layerId) {
+        activeFilterLayer = null;
+        for (var fid in FILTERABLE_LAYERS) {
+          if (fid !== layerId && activeLayers[fid]) { activeFilterLayer = fid; break; }
+        }
+        buildFilterPanel(activeFilterLayer);
+      }
+    }
     updateUI();
     return;
   }
@@ -531,6 +569,10 @@ async function toggleLayer(layerId) {
       features.push({ type: 'Feature', geometry: geom, properties });
     }
 
+    if (FILTERABLE_LAYERS[layerId]) {
+      layerRawData[layerId] = features;
+    }
+
     if (features.length === 0) {
       hideLoading();
       alert(`Sin datos para ${cfg.name}`);
@@ -558,11 +600,159 @@ async function toggleLayer(layerId) {
 
     hideLoading();
     updateUI();
+    if (FILTERABLE_LAYERS[layerId]) {
+      activeFilterLayer = layerId;
+      buildFilterPanel(layerId);
+    }
   } catch(e) {
     hideLoading();
     console.error(`Error cargando ${layerId}:`, e);
     alert(`Error cargando ${cfg.name}: ${e.message}`);
   }
+}
+
+function getUniqueValues(features, field) {
+  var values = new Set();
+  features.forEach(function(f) {
+    var v = f.properties[field];
+    if (v != null && v !== '' && v !== 'null') values.add(String(v));
+  });
+  return Array.from(values).sort();
+}
+
+function buildFilterPanel(layerId) {
+  var container = document.getElementById('filter-panel');
+  if (!layerId || !FILTERABLE_LAYERS[layerId]) { container.innerHTML = ''; return; }
+  var config = FILTERABLE_LAYERS[layerId];
+  var raw = layerRawData[layerId];
+  if (!raw || raw.length === 0) { container.innerHTML = ''; return; }
+
+  var html = '<div class="filter-panel">';
+  html += '<div class="filter-header"><span class="filter-title"><i class="fas fa-filter"></i> Filtros: ' + config.name + '</span><span class="filter-count" id="filter-count"></span></div>';
+  html += '<div class="filter-groups">';
+
+  config.dropdowns.forEach(function(dd) {
+    var values = getUniqueValues(raw, dd.field);
+    html += '<div class="filter-group"><label>' + dd.label + '</label>';
+    html += '<select data-field="' + dd.field + '" onchange="applyFilters()"><option value="">Todos</option>';
+    values.forEach(function(v) { html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; });
+    html += '</select></div>';
+  });
+
+  if (config.optionalDropdowns && config.optionalDropdowns.length > 0) {
+    var sampleProps = raw[0] ? raw[0].properties : {};
+    config.optionalDropdowns.forEach(function(field) {
+      if (sampleProps[field] === undefined) return;
+      var values = getUniqueValues(raw, field);
+      if (values.length === 0) return;
+      var label = field.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+      html += '<div class="filter-group"><label>' + label + '</label>';
+      html += '<select data-field="' + field + '" onchange="applyFilters()"><option value="">Todos</option>';
+      values.forEach(function(v) { html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; });
+      html += '</select></div>';
+    });
+  }
+
+  config.searches.forEach(function(s) {
+    html += '<div class="filter-group"><label>' + s.label + '</label>';
+    html += '<input type="text" data-field="' + s.field + '" placeholder="Buscar..." oninput="debounceApplyFilters()" />';
+    html += '</div>';
+  });
+
+  html += '</div>';
+  html += '<div class="filter-actions"><button class="filter-clear-btn" onclick="clearFilters()"><i class="fas fa-times"></i> Limpiar filtros</button></div>';
+  html += '<div class="filter-empty" id="filter-empty" style="display:none">Sin resultados para los filtros seleccionados.</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+  updateFilterCount(raw.length, raw.length);
+}
+
+function updateFilterCount(filtered, total) {
+  var el = document.getElementById('filter-count');
+  if (el) el.textContent = filtered + ' / ' + total + ' registros';
+}
+
+var _applyFiltersTimeout = null;
+function debounceApplyFilters() {
+  clearTimeout(_applyFiltersTimeout);
+  _applyFiltersTimeout = setTimeout(applyFilters, 300);
+}
+
+function applyFilters() {
+  if (!activeFilterLayer) return;
+  var layerId = activeFilterLayer;
+  var cfg = LAYERS.find(function(l) { return l.id === layerId; });
+  var raw = layerRawData[layerId];
+  if (!cfg || !raw) return;
+
+  var panel = document.getElementById('filter-panel');
+  var filtered = raw;
+
+  panel.querySelectorAll('select[data-field]').forEach(function(sel) {
+    var value = sel.value;
+    if (value) {
+      var field = sel.dataset.field;
+      filtered = filtered.filter(function(f) {
+        return String(f.properties[field] || '').toLowerCase() === value.toLowerCase();
+      });
+    }
+  });
+
+  panel.querySelectorAll('input[data-field]').forEach(function(inp) {
+    var value = inp.value.toLowerCase().trim();
+    if (value) {
+      var field = inp.dataset.field;
+      filtered = filtered.filter(function(f) {
+        return String(f.properties[field] || '').toLowerCase().indexOf(value) !== -1;
+      });
+    }
+  });
+
+  rebuildFilteredLayer(layerId, cfg, filtered);
+}
+
+function rebuildFilteredLayer(layerId, cfg, filtered) {
+  if (activeLayers[layerId]) map.removeLayer(activeLayers[layerId]);
+
+  var total = layerRawData[layerId].length;
+  var emptyEl = document.getElementById('filter-empty');
+
+  if (filtered.length === 0) {
+    delete activeLayers[layerId];
+    layerCounts[layerId] = 0;
+    updateUI();
+    updateFilterCount(0, total);
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  var fc = { type: 'FeatureCollection', features: filtered };
+  var style = getLayerStyle(cfg);
+  var pointStyle = getPointStyle(cfg);
+
+  var layer = L.geoJSON(fc, {
+    style: function() { return style; },
+    pointToLayer: function(feature, latlng) { return L.circleMarker(latlng, pointStyle); },
+    onEachFeature: function(feature, leafletLayer) {
+      leafletLayer.bindPopup(buildPopup(feature.properties, cfg), { maxWidth: 340 });
+    }
+  }).addTo(map);
+
+  activeLayers[layerId] = layer;
+  layerCounts[layerId] = filtered.length;
+  updateUI();
+  updateFilterCount(filtered.length, total);
+}
+
+function clearFilters() {
+  var panel = document.getElementById('filter-panel');
+  if (!panel) return;
+  panel.querySelectorAll('select').forEach(function(sel) { sel.value = ''; });
+  panel.querySelectorAll('input[type="text"]').forEach(function(inp) { inp.value = ''; });
+  applyFilters();
 }
 
 function buildSidebar() {
