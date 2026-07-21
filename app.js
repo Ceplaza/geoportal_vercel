@@ -34,7 +34,7 @@ const LAYERS = [
     icon: 'fa-building',
     color: '#f59e0b',
     geomType: 'polygon',
-    displayFields: ['name', 'building', 'amenity', 'faculty', 'ec_tipo', 'height', 'building_l', 'opening_ho'],
+    displayFields: ['name', 'amenity', 'faculty', 'height', 'opening_ho', 'type', 'ec_campus'],
     labelField: 'name',
     maxFeatures: 2000
   },
@@ -45,7 +45,7 @@ const LAYERS = [
     icon: 'fa-seedling',
     color: '#a855f7',
     geomType: 'point',
-    displayFields: [],
+    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu'],
     imageField: 'image_url',
     linkField: 'url',
     labelField: 'common_nam',
@@ -181,83 +181,92 @@ async function loadFloraConteos() {
   return floraConteosCache;
 }
 
-function buildFloraChartHTML(scientific) {
+function buildFloraChartHTML(scientific, canvasId) {
   const key = (scientific || '').toLowerCase().trim();
   const row = floraConteosCache[key];
-  if (!row) return '<div style="padding:8px 0;font-size:11px;color:#64748b">Sin datos de tendencia anual</div>';
+  if (!row) return '';
 
   const years = ['2021','2022','2023','2024','2025'];
   const vals = years.map(y => row[`year_${y}`] || 0);
-  const xArr = [2021,2022,2023,2024,2025];
-  const reg = computeLinearRegression(xArr, vals);
-
-  const chartId = 'chart-' + Math.random().toString(36).substr(2,9);
-  const dataJson = JSON.stringify(vals);
-  const regData = JSON.stringify(xArr.map(x => Math.round((reg.slope * x + reg.intercept) * 10) / 10));
+  if (vals.every(v => v === 0)) return '';
 
   return `
     <div style="margin-top:8px">
       <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:4px">Tendencia 2021-2025</div>
-      <canvas id="${chartId}" height="100"></canvas>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-top:2px">
-        <span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span>
-      </div>
-      <div style="font-size:10px;color:#10b981;margin-top:4px">
-        Tendencia: +${Math.round(reg.slope * 10) / 10}/año
-      </div>
-    </div>
-    <script>
-    (function(){
-      var canvas = document.getElementById('${chartId}');
-      if (!canvas) return;
-      var ctx = canvas.getContext('2d');
-      var vals = ${dataJson};
-      var regVals = ${regData};
-      var maxVal = Math.max.apply(null, vals.concat(regVals)) || 1;
-      var W = canvas.width = canvas.parentElement.offsetWidth - 2;
-      var H = 100;
-      canvas.height = H;
-      var padT = 10, padB = 5, padL = 5, padR = 5;
-      var cW = W - padL - padR, cH = H - padT - padB;
-      var barW = cW / vals.length * 0.5;
+      <canvas id="${canvasId}" height="110" width="260"></canvas>
+    </div>`;
+}
 
-      ctx.clearRect(0, 0, W, H);
+function renderFloraChart(canvasId, scientific) {
+  const key = (scientific || '').toLowerCase().trim();
+  const row = floraConteosCache[key];
+  if (!row) return;
 
-      // bars
-      for (var i = 0; i < vals.length; i++) {
-        var x = padL + (cW / vals.length) * i + (cW / vals.length - barW) / 2;
-        var h = (vals[i] / maxVal) * cH;
-        var y = padT + cH - h;
-        ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
-        ctx.beginPath();
-        ctx.roundRect(x, y, barW, h, [3,3,0,0]);
-        ctx.fill();
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(vals[i], x + barW/2, y - 3);
-      }
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
 
-      // regression line
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4,2]);
-      ctx.beginPath();
-      for (var i = 0; i < regVals.length; i++) {
-        var x = padL + (cW / regVals.length) * i + (cW / regVals.length) / 2;
-        var y = padT + cH - (regVals[i] / maxVal) * cH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-    })();
-    </script>`;
+  const years = ['2021','2022','2023','2024','2025'];
+  const vals = years.map(y => row[`year_${y}`] || 0);
+  if (vals.every(v => v === 0)) return;
+
+  const xArr = [2021,2022,2023,2024,2025];
+  const reg = computeLinearRegression(xArr, vals);
+  const regVals = xArr.map(x => Math.round((reg.slope * x + reg.intercept) * 10) / 10);
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const padT = 14, padB = 8, padL = 5, padR = 5;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const maxVal = Math.max.apply(null, vals.concat(regVals)) || 1;
+  const barW = cW / vals.length * 0.45;
+
+  ctx.clearRect(0, 0, W, H);
+
+  for (let i = 0; i < vals.length; i++) {
+    const x = padL + (cW / vals.length) * i + (cW / vals.length - barW) / 2;
+    const h = (vals[i] / maxVal) * cH;
+    const y = padT + cH - h;
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
+    ctx.fillRect(x, y, barW, h);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(vals[i], x + barW/2, y - 3);
+  }
+
+  ctx.strokeStyle = '#10b981';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4,2]);
+  ctx.beginPath();
+  for (let i = 0; i < regVals.length; i++) {
+    const x = padL + (cW / regVals.length) * i + (cW / regVals.length) / 2;
+    const y = padT + cH - (regVals[i] / maxVal) * cH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < years.length; i++) {
+    const x = padL + (cW / years.length) * i + (cW / years.length) / 2;
+    ctx.fillText(years[i], x, H - 1);
+  }
+
+  ctx.fillStyle = '#10b981';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Tendencia: +' + (Math.round(reg.slope * 10) / 10) + '/año', padL, H - 1);
+}
 }
 
 function buildFloraPopup(props, layerCfg) {
   const color = layerCfg.color;
-  const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
-  const titleClean = title.charAt(0).toUpperCase() + title.slice(1);
+  const title = props[layerCfg.labelField] || '';
+  const titleClean = title ? title.charAt(0).toUpperCase() + title.slice(1) : '';
+  const canvasId = 'chart-' + (props.gid || Math.random().toString(36).substr(2,9));
 
   let html = `<div class="popup-content" style="max-width:300px">`;
 
@@ -266,12 +275,29 @@ function buildFloraPopup(props, layerCfg) {
   }
 
   html += `<div style="padding:10px">`;
-  html += `<div style="font-size:15px;font-weight:700;margin-bottom:6px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
+  if (titleClean) {
+    html += `<div style="font-size:15px;font-weight:700;margin-bottom:6px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
+  }
   if (props.scientific) {
     html += `<div style="font-size:12px;font-style:italic;color:#94a3b8;margin-bottom:6px">${escapeHtml(props.scientific)}</div>`;
   }
 
-  html += buildFloraChartHTML(props.scientific);
+  html += `<div class="popup-grid">`;
+  if (props.taxon_orde) {
+    html += `<span class="popup-key">Orden</span><span class="popup-val">${escapeHtml(props.taxon_orde)}</span>`;
+  }
+  if (props.taxon_fami) {
+    html += `<span class="popup-key">Familia</span><span class="popup-val">${escapeHtml(props.taxon_fami)}</span>`;
+  }
+  if (props.taxon_genu) {
+    html += `<span class="popup-key">Género</span><span class="popup-val">${escapeHtml(props.taxon_genu)}</span>`;
+  }
+  if (props.place_gues) {
+    html += `<span class="popup-key">Ubicación</span><span class="popup-val">${escapeHtml(props.place_gues)}</span>`;
+  }
+  html += `</div>`;
+
+  html += buildFloraChartHTML(props.scientific, canvasId);
 
   const gid = props.gid;
   html += `
@@ -547,6 +573,16 @@ document.getElementById('search-input').addEventListener('input', (e) => {
     const match = card.dataset.name.includes(q) || card.dataset.desc.includes(q);
     card.style.display = match ? '' : 'none';
   });
+});
+
+map.on('popupopen', function(e) {
+  const canvas = e.popup.getElement().querySelector('canvas');
+  if (canvas && canvas.id) {
+    const props = e.popup._source?.feature?.properties;
+    if (props) {
+      setTimeout(() => renderFloraChart(canvas.id, props.scientific), 50);
+    }
+  }
 });
 
 buildSidebar();
