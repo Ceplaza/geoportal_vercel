@@ -20,7 +20,8 @@ const LAYERS = [
     icon: 'fa-dove',
     color: '#3b82f6',
     geomType: 'point',
-    displayFields: ['common_nam', 'taxon_orde', 'taxon_fami', 'taxon_spec', 'time_obser', 'place_gues'],
+    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_spec'],
+    extraDisplayFields: { taxon_orde: 'Orden', taxon_fami: 'Familia', taxon_spec: 'Especie' },
     imageField: 'image_url',
     linkField: 'url',
     labelField: 'common_nam',
@@ -44,10 +45,11 @@ const LAYERS = [
     icon: 'fa-seedling',
     color: '#a855f7',
     geomType: 'point',
-    displayFields: ['common_nam', 'taxon_orde', 'taxon_fami', 'taxon_spec', 'time_obser', 'place_gues'],
+    displayFields: [],
     imageField: 'image_url',
     linkField: 'url',
     labelField: 'common_nam',
+    isFlora: true,
     maxFeatures: 5000
   },
   {
@@ -80,6 +82,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 
 const activeLayers = {};
 const layerCounts = {};
+let floraConteosCache = {};
 
 function showLoading(text) {
   document.getElementById('loading-overlay').style.display = 'block';
@@ -116,7 +119,225 @@ function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function computeLinearRegression(xArr, yArr) {
+  const n = xArr.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += xArr[i];
+    sumY += yArr[i];
+    sumXY += xArr[i] * yArr[i];
+    sumX2 += xArr[i] * xArr[i];
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function buildAvesPopup(props, layerCfg) {
+  const color = layerCfg.color;
+  const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
+  const titleClean = title.charAt(0).toUpperCase() + title.slice(1);
+
+  let html = `<div class="popup-content" style="max-width:300px">`;
+
+  if (props[layerCfg.imageField]) {
+    html += `<img class="popup-img" src="${escapeHtml(props[layerCfg.imageField])}" onerror="this.style.display='none'" />`;
+  }
+
+  html += `<div style="padding:10px">`;
+  html += `<div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
+  html += `<div class="popup-grid">`;
+  html += `<span class="popup-key">Especie</span><span class="popup-val" style="font-style:italic">${escapeHtml(props.taxon_spec) || ''}</span>`;
+  html += `<span class="popup-key">Familia</span><span class="popup-val">${escapeHtml(props.taxon_fami) || ''}</span>`;
+  html += `<span class="popup-key">Orden</span><span class="popup-val">${escapeHtml(props.taxon_orde) || ''}</span>`;
+  if (props.place_gues) {
+    html += `<span class="popup-key">Ubicación</span><span class="popup-val">${escapeHtml(props.place_gues)}</span>`;
+  }
+  if (props.time_obser) {
+    html += `<span class="popup-key">Observación</span><span class="popup-val">${escapeHtml(props.time_obser)}</span>`;
+  }
+  html += `</div>`;
+
+  if (props[layerCfg.linkField]) {
+    html += `<a class="popup-link" href="${escapeHtml(props[layerCfg.linkField])}" target="_blank"><i class="fas fa-external-link-alt"></i> Ver en iNaturalist</a>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+async function loadFloraConteos() {
+  if (Object.keys(floraConteosCache).length > 0) return floraConteosCache;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/flora_conteos_anuales?select=*`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    for (const row of data) {
+      const key = (row.scientific || '').toLowerCase().trim();
+      floraConteosCache[key] = row;
+    }
+  } catch(e) { console.warn('No se pudo cargar flora_conteos_anuales:', e); }
+  return floraConteosCache;
+}
+
+function buildFloraChartHTML(scientific) {
+  const key = (scientific || '').toLowerCase().trim();
+  const row = floraConteosCache[key];
+  if (!row) return '<div style="padding:8px 0;font-size:11px;color:#64748b">Sin datos de tendencia anual</div>';
+
+  const years = ['2021','2022','2023','2024','2025'];
+  const vals = years.map(y => row[`year_${y}`] || 0);
+  const xArr = [2021,2022,2023,2024,2025];
+  const reg = computeLinearRegression(xArr, vals);
+
+  const chartId = 'chart-' + Math.random().toString(36).substr(2,9);
+  const dataJson = JSON.stringify(vals);
+  const regData = JSON.stringify(xArr.map(x => Math.round((reg.slope * x + reg.intercept) * 10) / 10));
+
+  return `
+    <div style="margin-top:8px">
+      <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:4px">Tendencia 2021-2025</div>
+      <canvas id="${chartId}" height="100"></canvas>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-top:2px">
+        <span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span>
+      </div>
+      <div style="font-size:10px;color:#10b981;margin-top:4px">
+        Tendencia: +${Math.round(reg.slope * 10) / 10}/año
+      </div>
+    </div>
+    <script>
+    (function(){
+      var canvas = document.getElementById('${chartId}');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var vals = ${dataJson};
+      var regVals = ${regData};
+      var maxVal = Math.max.apply(null, vals.concat(regVals)) || 1;
+      var W = canvas.width = canvas.parentElement.offsetWidth - 2;
+      var H = 100;
+      canvas.height = H;
+      var padT = 10, padB = 5, padL = 5, padR = 5;
+      var cW = W - padL - padR, cH = H - padT - padB;
+      var barW = cW / vals.length * 0.5;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // bars
+      for (var i = 0; i < vals.length; i++) {
+        var x = padL + (cW / vals.length) * i + (cW / vals.length - barW) / 2;
+        var h = (vals[i] / maxVal) * cH;
+        var y = padT + cH - h;
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, h, [3,3,0,0]);
+        ctx.fill();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(vals[i], x + barW/2, y - 3);
+      }
+
+      // regression line
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4,2]);
+      ctx.beginPath();
+      for (var i = 0; i < regVals.length; i++) {
+        var x = padL + (cW / regVals.length) * i + (cW / regVals.length) / 2;
+        var y = padT + cH - (regVals[i] / maxVal) * cH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    })();
+    </script>`;
+}
+
+function buildFloraPopup(props, layerCfg) {
+  const color = layerCfg.color;
+  const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
+  const titleClean = title.charAt(0).toUpperCase() + title.slice(1);
+
+  let html = `<div class="popup-content" style="max-width:300px">`;
+
+  if (props[layerCfg.imageField]) {
+    html += `<img class="popup-img" src="${escapeHtml(props[layerCfg.imageField])}" onerror="this.style.display='none'" />`;
+  }
+
+  html += `<div style="padding:10px">`;
+  html += `<div style="font-size:15px;font-weight:700;margin-bottom:6px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
+  if (props.scientific) {
+    html += `<div style="font-size:12px;font-style:italic;color:#94a3b8;margin-bottom:6px">${escapeHtml(props.scientific)}</div>`;
+  }
+
+  html += buildFloraChartHTML(props.scientific);
+
+  const gid = props.gid;
+  html += `
+    <div style="margin-top:10px;border-top:1px solid #334155;padding-top:8px">
+      <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Registrar conteo 2026</div>
+      <div style="display:flex;gap:4px;align-items:center">
+        <input id="input-2026-${gid}" type="number" min="0" placeholder="Valor"
+          style="width:70px;padding:4px 6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px" />
+        <button onclick="guardar2026(${gid},'${escapeHtml(props.scientific || '')}','${escapeHtml(props.common_nam || '')}')"
+          style="padding:4px 10px;border-radius:4px;border:none;background:#a855f7;color:white;font-size:11px;cursor:pointer;font-weight:600">
+          Guardar
+        </button>
+      </div>
+      <div id="msg-2026-${gid}" style="font-size:11px;margin-top:4px"></div>
+    </div>`;
+
+  if (props[layerCfg.linkField]) {
+    html += `<a class="popup-link" href="${escapeHtml(props[layerCfg.linkField])}" target="_blank"><i class="fas fa-external-link-alt"></i> Ver en iNaturalist</a>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+async function guardar2026(gid, scientific, commonNam) {
+  const input = document.getElementById(`input-2026-${gid}`);
+  const msg = document.getElementById(`msg-2026-${gid}`);
+  const val = parseInt(input.value);
+  if (isNaN(val) || val < 0) { msg.style.color = '#ef4444'; msg.textContent = 'Ingrese un valor válido'; return; }
+
+  msg.style.color = '#94a3b8'; msg.textContent = 'Guardando...';
+
+  const key = (scientific || '').toLowerCase().trim();
+  const existing = floraConteosCache[key];
+
+  if (existing) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/flora_conteos_anuales?gid=eq.${existing.gid}`, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ year_2026: val })
+    });
+    if (res.ok) {
+      floraConteosCache[key].year_2026 = val;
+      msg.style.color = '#10b981'; msg.textContent = `Guardado: ${val}`;
+    } else {
+      msg.style.color = '#ef4444'; msg.textContent = 'Error al guardar';
+    }
+  } else {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/flora_conteos_anuales`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ scientific, common_nam: commonNam, year_2021: 0, year_2022: 0, year_2023: 0, year_2024: 0, year_2025: 0, year_2026: val })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data[0]) floraConteosCache[key] = data[0];
+      msg.style.color = '#10b981'; msg.textContent = `Guardado: ${val}`;
+    } else {
+      msg.style.color = '#ef4444'; msg.textContent = 'Error al guardar';
+    }
+  }
+}
+
 function buildPopup(props, layerCfg) {
+  if (layerCfg.id === 'ave_ucuenca') return buildAvesPopup(props, layerCfg);
+  if (layerCfg.isFlora) return buildFloraPopup(props, layerCfg);
+
   const color = layerCfg.color;
   const icon = layerCfg.icon;
   const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
@@ -127,15 +348,11 @@ function buildPopup(props, layerCfg) {
   html += `<div class="popup-title">${escapeHtml(title)}</div>`;
   html += `</div>`;
 
-  if (layerCfg.imageField && props[layerCfg.imageField]) {
-    html += `<img class="popup-img" src="${escapeHtml(props[layerCfg.imageField])}" onerror="this.style.display='none'" />`;
-  }
-
   html += `<div class="popup-grid">`;
   for (const field of layerCfg.displayFields) {
     const val = props[field];
     if (val != null && val !== '' && val !== 'null') {
-      const cleanKey = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const cleanKey = layerCfg.extraDisplayFields?.[field] || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       html += `<span class="popup-key">${escapeHtml(cleanKey)}</span>`;
       html += `<span class="popup-val">${escapeHtml(val)}</span>`;
     }
@@ -178,6 +395,10 @@ async function toggleLayer(layerId) {
   }
 
   showLoading(`Cargando ${cfg.name}...`);
+
+  if (cfg.isFlora) {
+    await loadFloraConteos();
+  }
 
   try {
     const fields = ['gid', 'geom', cfg.labelField, cfg.imageField, cfg.linkField, ...cfg.displayFields].filter(v => v != null).filter((v,i,a) => a.indexOf(v) === i).join(',');
