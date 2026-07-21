@@ -260,6 +260,11 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
   display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;
 }
 .filter-clear-btn:hover { background: #334155; color: #e2e8f0; }
+.filter-close-btn {
+  background: none; border: none; color: #64748b; cursor: pointer;
+  font-size: 16px; padding: 0; line-height: 1; transition: color 0.2s;
+}
+.filter-close-btn:hover { color: #e2e8f0; }
 .filter-empty { font-size: 12px; color: #f59e0b; text-align: center; padding: 8px 0 0; font-style: italic; }
 
 @media (max-width: 768px) {

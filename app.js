@@ -20,7 +20,7 @@ const LAYERS = [
     icon: 'fa-dove',
     color: '#3b82f6',
     geomType: 'point',
-    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_spec'],
+    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu', 'taxon_spec'],
     extraDisplayFields: { taxon_orde: 'Orden', taxon_fami: 'Familia', taxon_spec: 'Especie' },
     imageField: 'image_url',
     linkField: 'url',
@@ -76,7 +76,7 @@ const LAYER_METADATA = {
   ave_ucuenca: {
     source: 'iNaturalist (observaciones de aves)',
     srs: 'WGS 84 (EPSG:4326)',
-    fields: ['common_nam', 'taxon_orde', 'taxon_fami', 'taxon_spec', 'image_url', 'url'],
+    fields: ['common_nam', 'taxon_orde', 'taxon_fami', 'taxon_genu', 'taxon_spec', 'image_url', 'url'],
     updateDate: 'Continua',
     responsible: 'iNaturalist / Universidad de Cuenca'
   },
@@ -107,8 +107,9 @@ const FILTERABLE_LAYERS = {
   ave_ucuenca: {
     name: 'Aves',
     dropdowns: [
+      { field: 'taxon_orde', label: 'Orden' },
       { field: 'taxon_fami', label: 'Familia' },
-      { field: 'taxon_orde', label: 'Orden' }
+      { field: 'taxon_genu', label: 'Genero' }
     ],
     searches: [
       { field: 'common_nam', label: 'Nombre comun' },
@@ -119,7 +120,9 @@ const FILTERABLE_LAYERS = {
   flora_ucuenca: {
     name: 'Flora',
     dropdowns: [
-      { field: 'taxon_fami', label: 'Familia' }
+      { field: 'taxon_orde', label: 'Orden' },
+      { field: 'taxon_fami', label: 'Familia' },
+      { field: 'taxon_genu', label: 'Genero' }
     ],
     searches: [
       { field: 'common_nam', label: 'Nombre comun' },
@@ -628,7 +631,7 @@ function buildFilterPanel(layerId) {
   if (!raw || raw.length === 0) { container.innerHTML = ''; return; }
 
   var html = '<div class="filter-panel">';
-  html += '<div class="filter-header"><span class="filter-title"><i class="fas fa-filter"></i> Filtros: ' + config.name + '</span><span class="filter-count" id="filter-count"></span></div>';
+  html += '<div class="filter-header"><span class="filter-title"><i class="fas fa-filter"></i> Filtros: ' + config.name + '</span><div style="display:flex;align-items:center;gap:8px"><span class="filter-count" id="filter-count"></span><button class="filter-close-btn" onclick="closeFilterPanel()" title="Cerrar filtros">&times;</button></div></div>';
   html += '<div class="filter-groups">';
 
   config.dropdowns.forEach(function(dd) {
@@ -753,6 +756,10 @@ function clearFilters() {
   panel.querySelectorAll('select').forEach(function(sel) { sel.value = ''; });
   panel.querySelectorAll('input[type="text"]').forEach(function(inp) { inp.value = ''; });
   applyFilters();
+}
+
+function closeFilterPanel() {
+  document.getElementById('filter-panel').innerHTML = '';
 }
 
 function buildSidebar() {
