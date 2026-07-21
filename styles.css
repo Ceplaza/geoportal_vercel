@@ -180,8 +180,59 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
   box-shadow: 0 0 6px rgba(16,185,129,0.6);
 }
 
+/* Selector de mapa base */
+.leaflet-control-basemap {
+  background: #1e293be6; backdrop-filter: blur(8px); border: 1px solid #334155;
+  border-radius: 8px; padding: 4px; display: flex; gap: 2px;
+}
+.basemap-btn {
+  width: 32px; height: 32px; border-radius: 6px; border: none;
+  background: transparent; color: #64748b; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all 0.2s ease;
+}
+.basemap-btn:hover { background: #334155; color: #e2e8f0; }
+.basemap-btn.active { background: #10b98122; color: #10b981; }
+
+/* Boton info metadatos */
+.info-btn {
+  background: none; border: none; color: #475569; cursor: pointer;
+  font-size: 12px; padding: 0 0 0 6px; vertical-align: middle;
+  transition: color 0.2s;
+}
+.info-btn:hover { color: #10b981; }
+
+/* Panel modal de metadatos */
+.metadata-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+}
+.metadata-modal {
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+  width: 90%; max-width: 480px; max-height: 80vh;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+}
+.metadata-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid #334155;
+}
+.metadata-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.metadata-close {
+  background: none; border: none; color: #94a3b8; font-size: 22px;
+  cursor: pointer; line-height: 1; padding: 0;
+}
+.metadata-close:hover { color: #e2e8f0; }
+.metadata-body { padding: 16px 20px; overflow-y: auto; }
+.meta-table { width: 100%; border-collapse: collapse; }
+.meta-table td { padding: 8px 0; font-size: 13px; color: #cbd5e1; vertical-align: top; }
+.meta-table tr + tr td { border-top: 1px solid #334155; }
+.meta-key { color: #64748b; font-weight: 500; white-space: nowrap; width: 38%; padding-right: 12px; }
+
 @media (max-width: 768px) {
   #sidebar { position: absolute; height: 100%; z-index: 1000; }
   #sidebar.collapsed { transform: translateX(-320px); }
   #stats-bar { bottom: 10px; right: 10px; flex-wrap: wrap; }
+  .metadata-modal { width: 95%; max-width: none; }
 }

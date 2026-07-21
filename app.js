@@ -65,6 +65,44 @@ const LAYERS = [
   }
 ];
 
+const LAYER_METADATA = {
+  areas_verdes_geom: {
+    source: 'OpenStreetMap / Datos municipales',
+    srs: 'WGS 84 (EPSG:4326)',
+    fields: ['name', 'tipo', 'direccion', 'area_ha', 'codigo'],
+    updateDate: '2024',
+    responsible: 'Municipio de Cuenca'
+  },
+  ave_ucuenca: {
+    source: 'iNaturalist (observaciones de aves)',
+    srs: 'WGS 84 (EPSG:4326)',
+    fields: ['common_nam', 'taxon_orde', 'taxon_fami', 'taxon_spec', 'image_url', 'url'],
+    updateDate: 'Continua',
+    responsible: 'iNaturalist / Universidad de Cuenca'
+  },
+  emplazamiento_ucuenca: {
+    source: 'OpenStreetMap (edificios UCuenca)',
+    srs: 'WGS 84 (EPSG:4326)',
+    fields: ['name', 'amenity', 'faculty', 'height', 'opening_ho', 'type', 'ec_campus'],
+    updateDate: '2024',
+    responsible: 'Universidad de Cuenca'
+  },
+  flora_ucuenca: {
+    source: 'iNaturalist (observaciones de flora)',
+    srs: 'WGS 84 (EPSG:4326)',
+    fields: ['common_nam', 'scientific', 'taxon_orde', 'taxon_fami', 'taxon_genu', 'image_url', 'url'],
+    updateDate: 'Continua',
+    responsible: 'iNaturalist / Universidad de Cuenca'
+  },
+  rios_cuenca: {
+    source: 'OpenStreetMap (rios y quebradas)',
+    srs: 'WGS 84 (EPSG:4326)',
+    fields: ['name', 'waterway', 'intermitte', 'width', 'source', 'wikidata'],
+    updateDate: '2024',
+    responsible: 'OpenStreetMap'
+  }
+};
+
 const map = L.map('map', {
   center: [-2.9000, -79.0050],
   zoom: 13,
@@ -74,11 +112,48 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-  subdomains: 'abcd',
-  maxZoom: 19
-}).addTo(map);
+const baseMaps = {
+  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }),
+  'Esri World Imagery': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    maxZoom: 18
+  }),
+  'Carto Positron': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }),
+  'Carto Dark Matter': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  })
+};
+baseMaps['OpenStreetMap'].addTo(map);
+
+const BaseMapControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-basemap');
+    const icons = { 'OpenStreetMap': 'fa-map', 'Esri World Imagery': 'fa-satellite', 'Carto Positron': 'fa-circle', 'Carto Dark Matter': 'fa-moon' };
+    Object.keys(baseMaps).forEach(function(name) {
+      const btn = L.DomUtil.create('button', 'basemap-btn', container);
+      btn.title = name;
+      btn.innerHTML = '<i class="fas ' + (icons[name] || 'fa-globe') + '"></i>';
+      if (name === 'OpenStreetMap') btn.classList.add('active');
+      btn.addEventListener('click', function() {
+        Object.values(baseMaps).forEach(function(layer) { map.removeLayer(layer); });
+        baseMaps[name].addTo(map);
+        container.querySelectorAll('.basemap-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+      });
+      L.DomEvent.disableClickPropagation(btn);
+    });
+    return container;
+  }
+});
+new BaseMapControl().addTo(map);
 
 const activeLayers = {};
 const layerCounts = {};
@@ -506,7 +581,7 @@ function buildSidebar() {
       <div class="layer-header">
         <div class="layer-icon"><i class="fas ${cfg.icon}"></i></div>
         <div class="layer-info">
-          <div class="layer-name">${cfg.name}</div>
+          <div class="layer-name">${cfg.name}<button class="info-btn" data-layer="${cfg.id}" title="Metadatos"><i class="fas fa-info-circle"></i></button></div>
           <div class="layer-desc">${cfg.desc}</div>
         </div>
         <span class="layer-count" id="count-${cfg.id}">--</span>
@@ -514,6 +589,11 @@ function buildSidebar() {
     `;
 
     card.addEventListener('click', () => toggleLayer(cfg.id));
+    card.querySelector('.info-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      showMetadata(cfg.id);
+    });
     container.appendChild(card);
   }
 }
@@ -644,6 +724,52 @@ const LocationControl = L.Control.extend({
   }
 });
 new LocationControl().addTo(map);
+
+// === Panel de metadatos ===
+(function() {
+  const overlay = document.createElement('div');
+  overlay.id = 'metadata-overlay';
+  overlay.className = 'metadata-overlay';
+  overlay.style.display = 'none';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMetadata(); });
+  overlay.innerHTML = '<div class="metadata-modal"><div class="metadata-header"><h3 id="metadata-title"></h3><button class="metadata-close" onclick="closeMetadata()">&times;</button></div><div class="metadata-body" id="metadata-body"></div></div>';
+  document.body.appendChild(overlay);
+})();
+
+function showMetadata(layerId) {
+  var cfg = LAYERS.find(function(l) { return l.id === layerId; });
+  var meta = LAYER_METADATA[layerId];
+  if (!cfg || !meta) return;
+
+  document.getElementById('metadata-title').innerHTML = '<i class="fas ' + cfg.icon + '" style="color:' + cfg.color + '"></i> ' + cfg.name;
+
+  var count = layerCounts[layerId];
+  var rows = [
+    ['Descripcion', cfg.desc || '-'],
+    ['Fuente', meta.source || '-'],
+    ['Tipo de geometria', cfg.geomType || '-'],
+    ['Sistema de coordenadas', meta.srs || '-'],
+    ['Registros', count != null ? count + ' (cargados)' : 'Capa no cargada'],
+    ['Campos principales', meta.fields ? meta.fields.join(', ') : '-'],
+    ['Fecha de actualizacion', meta.updateDate || '-'],
+    ['Responsable', meta.responsible || '-']
+  ];
+
+  var html = '<table class="meta-table">';
+  for (var i = 0; i < rows.length; i++) {
+    html += '<tr><td class="meta-key">' + rows[i][0] + '</td><td>' + rows[i][1] + '</td></tr>';
+  }
+  html += '</table>';
+
+  document.getElementById('metadata-body').innerHTML = html;
+  document.getElementById('metadata-overlay').style.display = 'flex';
+}
+
+function closeMetadata() {
+  document.getElementById('metadata-overlay').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMetadata(); });
 
 buildSidebar();
 buildLegend();
