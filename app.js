@@ -260,7 +260,6 @@ function renderFloraChart(canvasId, scientific) {
   ctx.textAlign = 'left';
   ctx.fillText('Tendencia: +' + (Math.round(reg.slope * 10) / 10) + '/año', padL, H - 1);
 }
-}
 
 function buildFloraPopup(props, layerCfg) {
   const color = layerCfg.color;
