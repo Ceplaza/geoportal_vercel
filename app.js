@@ -60,10 +60,10 @@ const LAYERS = [
     color: '#ef4444',
     geomType: 'point',
     gidField: 'id_0',
-    displayFields: ['scientific', 'iconic_tax', 'species_gu', 'place_gues', 'time_obser'],
+    displayFields: ['scientific', 'species_gu'],
     imageField: 'image_url',
     linkField: 'url',
-    labelField: 'common_nam',
+    labelField: 'species_gu',
     maxFeatures: 5000
   }
 ];
@@ -100,7 +100,7 @@ const LAYER_METADATA = {
   entomofauna: {
     source: 'iNaturalist (observaciones de entomofauna)',
     srs: 'WGS 84 (EPSG:4326)',
-    fields: ['common_nam', 'scientific', 'iconic_tax', 'species_gu', 'image_url', 'url'],
+    fields: ['common_nam', 'scientific', 'species_gu', 'image_url', 'url'],
     updateDate: 'Continua',
     responsible: 'iNaturalist / Universidad de Cuenca'
   }
@@ -390,7 +390,7 @@ async function submitMeasurement() {
 
 function buildEntomofaunaPopup(props, layerCfg) {
   const color = layerCfg.color;
-  const title = props[layerCfg.labelField] || '';
+  const title = props.species_gu || props[layerCfg.labelField] || '';
   const titleClean = title ? title.charAt(0).toUpperCase() + title.slice(1) : '';
 
   let html = `<div class="popup-content" style="max-width:300px">`;
@@ -403,14 +403,6 @@ function buildEntomofaunaPopup(props, layerCfg) {
   html += `<div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
   html += `<div class="popup-grid">`;
   html += `<span class="popup-key">Especie</span><span class="popup-val" style="font-style:italic">${escapeHtml(props.scientific) || ''}</span>`;
-  html += `<span class="popup-key">Taxon</span><span class="popup-val">${escapeHtml(props.iconic_tax) || ''}</span>`;
-  html += `<span class="popup-key">Especie (GH)</span><span class="popup-val">${escapeHtml(props.species_gu) || ''}</span>`;
-  if (props.place_gues) {
-    html += `<span class="popup-key">Ubicación</span><span class="popup-val">${escapeHtml(props.place_gues)}</span>`;
-  }
-  if (props.time_obser) {
-    html += `<span class="popup-key">Observación</span><span class="popup-val">${escapeHtml(props.time_obser)}</span>`;
-  }
   html += `</div>`;
 
   if (props[layerCfg.linkField]) {
