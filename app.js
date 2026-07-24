@@ -110,28 +110,30 @@ const FILTERABLE_LAYERS = {
   ave_ucuenca: {
     name: 'Aves',
     dropdowns: [
-      { field: 'taxon_orde', label: 'Orden' },
-      { field: 'taxon_fami', label: 'Familia' },
       { field: 'taxon_genu', label: 'Genero' }
     ],
     searches: [
-      { field: 'common_nam', label: 'Nombre comun' },
-      { field: 'taxon_spec', label: 'Nombre cientifico' }
+      { field: 'common_nam', label: 'Nombre comun' }
     ],
     optionalDropdowns: []
   },
   flora_ucuenca: {
     name: 'Flora',
     dropdowns: [
-      { field: 'taxon_orde', label: 'Orden' },
-      { field: 'taxon_fami', label: 'Familia' },
       { field: 'taxon_genu', label: 'Genero' }
     ],
     searches: [
-      { field: 'common_nam', label: 'Nombre comun' },
-      { field: 'scientific', label: 'Nombre cientifico' }
+      { field: 'common_nam', label: 'Nombre comun' }
     ],
-    optionalDropdowns: ['life_stage', 'taxon_kingdom', 'establishment_means']
+    optionalDropdowns: []
+  },
+  entomofauna: {
+    name: 'Entomofauna',
+    dropdowns: [],
+    searches: [
+      { field: 'species_gu', label: 'Nombre comun' }
+    ],
+    optionalDropdowns: []
   }
 };
 
