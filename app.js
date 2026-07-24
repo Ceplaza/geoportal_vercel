@@ -33,7 +33,7 @@ const LAYERS = [
   {
     id: 'entomofauna',
     name: 'Invertebrados terrestres',
-    desc: 'Observaciones de insectos (iNaturalist)',
+    desc: 'Observaciones de invertebrados terrestres (iNaturalist)',
     icon: 'fa-bug',
     color: '#ef4444',
     geomType: 'point',
