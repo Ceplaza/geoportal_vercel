@@ -817,7 +817,7 @@ L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 200 }).addT
 
 // === Coordenadas del cursor ===
 const CoordsControl = L.Control.extend({
-  options: { position: 'bottomright' },
+  options: { position: 'bottomleft' },
   onAdd: function() {
     this._container = L.DomUtil.create('div', 'leaflet-control-coords');
     this._container.title = 'Coordenadas del cursor (WGS84)';
