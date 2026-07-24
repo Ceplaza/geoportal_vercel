@@ -183,7 +183,7 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
 /* Selector de mapa base */
 .leaflet-control-basemap {
   background: #1e293be6; backdrop-filter: blur(8px); border: 1px solid #334155;
-  border-radius: 8px; padding: 4px; display: flex; gap: 2px;
+  border-radius: 8px; padding: 4px; display: flex; flex-direction: column; gap: 2px;
 }
 .basemap-btn {
   width: 32px; height: 32px; border-radius: 6px; border: none;

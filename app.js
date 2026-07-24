@@ -3,15 +3,18 @@ const SUPABASE_KEY = '@@SUPABASE_KEY@@';
 
 const LAYERS = [
   {
-    id: 'areas_verdes_geom',
-    name: 'Areas Verdes',
-    desc: 'Parques y zonas verdes de Cuenca',
-    icon: 'fa-tree',
-    color: '#10b981',
-    geomType: 'polygon',
-    displayFields: ['name', 'tipo', 'direccion', 'area_ha', 'codigo'],
-    labelField: 'name',
-    maxFeatures: 2000
+    id: 'flora_ucuenca',
+    name: 'Flora',
+    desc: 'Observaciones de flora (iNaturalist)',
+    icon: 'fa-seedling',
+    color: '#a855f7',
+    geomType: 'point',
+    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu', 'scientific', 'medicion_2026'],
+    imageField: 'image_url',
+    linkField: 'url',
+    labelField: 'common_nam',
+    isFlora: true,
+    maxFeatures: 5000
   },
   {
     id: 'ave_ucuenca',
@@ -28,31 +31,6 @@ const LAYERS = [
     maxFeatures: 5000
   },
   {
-    id: 'emplazamiento_ucuenca',
-    name: 'Emplazamientos',
-    desc: 'Edificios e infraestructura UCuenca',
-    icon: 'fa-building',
-    color: '#f59e0b',
-    geomType: 'polygon',
-    displayFields: ['name', 'amenity', 'faculty', 'height', 'opening_ho', 'type', 'ec_campus'],
-    labelField: 'name',
-    maxFeatures: 2000
-  },
-  {
-    id: 'flora_ucuenca',
-    name: 'Flora',
-    desc: 'Observaciones de flora (iNaturalist)',
-    icon: 'fa-seedling',
-    color: '#a855f7',
-    geomType: 'point',
-    displayFields: ['taxon_orde', 'taxon_fami', 'taxon_genu', 'scientific', 'medicion_2026'],
-    imageField: 'image_url',
-    linkField: 'url',
-    labelField: 'common_nam',
-    isFlora: true,
-    maxFeatures: 5000
-  },
-  {
     id: 'entomofauna',
     name: 'Entomofauna',
     desc: 'Observaciones de insectos (iNaturalist)',
@@ -65,6 +43,28 @@ const LAYERS = [
     linkField: 'url',
     labelField: 'species_gu',
     maxFeatures: 5000
+  },
+  {
+    id: 'emplazamiento_ucuenca',
+    name: 'Emplazamientos',
+    desc: 'Edificios e infraestructura UCuenca',
+    icon: 'fa-building',
+    color: '#f59e0b',
+    geomType: 'polygon',
+    displayFields: ['name', 'amenity', 'faculty', 'height', 'opening_ho', 'type', 'ec_campus'],
+    labelField: 'name',
+    maxFeatures: 2000
+  },
+  {
+    id: 'areas_verdes_geom',
+    name: 'Areas Verdes',
+    desc: 'Parques y zonas verdes de Cuenca',
+    icon: 'fa-tree',
+    color: '#10b981',
+    geomType: 'polygon',
+    displayFields: ['name', 'tipo', 'direccion', 'area_ha', 'codigo'],
+    labelField: 'name',
+    maxFeatures: 2000
   }
 ];
 
