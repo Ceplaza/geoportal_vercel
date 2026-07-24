@@ -407,16 +407,13 @@ function buildFloraPopup(props, layerCfg) {
   const gid = props.gid;
   html += `
     <div style="margin-top:10px;border-top:1px solid #334155;padding-top:8px">
-      <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Registrar conteo 2026</div>
-      <div style="display:flex;gap:4px;align-items:center">
-        <input id="input-2026-${gid}" type="number" min="0" placeholder="Valor"
-          style="width:70px;padding:4px 6px;border-radius:4px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px" />
-        <button onclick="guardar2026(${gid},'${escapeHtml(props.scientific || '')}','${escapeHtml(props.common_nam || '')}')"
-          style="padding:4px 10px;border-radius:4px;border:none;background:#a855f7;color:white;font-size:11px;cursor:pointer;font-weight:600">
-          Guardar
-        </button>
-      </div>
-      <div id="msg-2026-${gid}" style="font-size:11px;margin-top:4px"></div>
+      <button class="meas-btn"
+        data-gid="${gid}"
+        data-scientific="${escapeHtml(props.scientific || '')}"
+        data-common="${escapeHtml(props.common_nam || '')}"
+        style="width:100%;padding:6px;border-radius:6px;border:none;background:#a855f7;color:white;font-size:12px;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px">
+        <i class="fas fa-ruler"></i> Registrar medicion 2026
+      </button>
     </div>`;
 
   if (props[layerCfg.linkField]) {
@@ -426,42 +423,78 @@ function buildFloraPopup(props, layerCfg) {
   return html;
 }
 
-async function guardar2026(gid, scientific, commonNam) {
-  const input = document.getElementById(`input-2026-${gid}`);
-  const msg = document.getElementById(`msg-2026-${gid}`);
-  const val = parseInt(input.value);
-  if (isNaN(val) || val < 0) { msg.style.color = '#ef4444'; msg.textContent = 'Ingrese un valor válido'; return; }
+function openMeasurementModal(gid, scientific, commonNam) {
+  document.getElementById('meas-gid').value = gid;
+  document.getElementById('meas-scientific').textContent = scientific || '-';
+  document.getElementById('meas-common').textContent = commonNam || '-';
+  document.getElementById('meas-value').value = '';
+  document.getElementById('meas-code').value = '';
+  document.getElementById('meas-msg').textContent = '';
+  document.getElementById('meas-msg').style.color = '';
+  document.getElementById('meas-submit-btn').disabled = false;
+  document.getElementById('measurement-overlay').style.display = 'flex';
+}
 
-  msg.style.color = '#94a3b8'; msg.textContent = 'Guardando...';
+function closeMeasurementModal() {
+  document.getElementById('measurement-overlay').style.display = 'none';
+}
 
-  const key = (scientific || '').toLowerCase().trim();
-  const existing = floraConteosCache[key];
+async function submitMeasurement() {
+  const gid = parseInt(document.getElementById('meas-gid').value);
+  const value = parseInt(document.getElementById('meas-value').value);
+  const accessCode = document.getElementById('meas-code').value.trim();
+  const msgEl = document.getElementById('meas-msg');
+  const btn = document.getElementById('meas-submit-btn');
 
-  if (existing) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/flora_conteos_anuales?gid=eq.${existing.gid}`, {
-      method: 'PATCH',
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ year_2026: val })
-    });
-    if (res.ok) {
-      floraConteosCache[key].year_2026 = val;
-      msg.style.color = '#10b981'; msg.textContent = `Guardado: ${val}`;
-    } else {
-      msg.style.color = '#ef4444'; msg.textContent = 'Error al guardar';
-    }
-  } else {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/flora_conteos_anuales`, {
+  if (isNaN(gid) || gid <= 0) { msgEl.style.color = '#ef4444'; msgEl.textContent = 'Error de solicitud'; return; }
+  if (isNaN(value) || value < 0) { msgEl.style.color = '#ef4444'; msgEl.textContent = 'Ingrese un valor valido (>= 0)'; return; }
+  if (!accessCode) { msgEl.style.color = '#ef4444'; msgEl.textContent = 'Ingrese el codigo de acceso'; return; }
+
+  btn.disabled = true;
+  msgEl.style.color = '#94a3b8';
+  msgEl.textContent = 'Enviando...';
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-measurement`, {
       method: 'POST',
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ scientific, common_nam: commonNam, year_2021: 0, year_2022: 0, year_2023: 0, year_2024: 0, year_2025: 0, year_2026: val })
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({ gid, value, access_code: accessCode })
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (data[0]) floraConteosCache[key] = data[0];
-      msg.style.color = '#10b981'; msg.textContent = `Guardado: ${val}`;
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      msgEl.style.color = '#10b981';
+      msgEl.textContent = `Guardado: ${data.year_2026}`;
+      btn.disabled = true;
+
+      const key = (document.getElementById('meas-scientific').textContent || '').toLowerCase().trim();
+      if (floraConteosCache[key]) {
+        floraConteosCache[key].year_2026 = data.year_2026;
+      }
+
+      setTimeout(closeMeasurementModal, 1500);
+    } else if (res.status === 429) {
+      msgEl.style.color = '#f59e0b';
+      msgEl.textContent = data.error || 'Demasiados intentos. Espere unos minutos.';
+      btn.disabled = false;
+    } else if (res.status === 400) {
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = 'Codigo de acceso invalido';
+      btn.disabled = false;
     } else {
-      msg.style.color = '#ef4444'; msg.textContent = 'Error al guardar';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = 'Error al guardar. Intente de nuevo.';
+      btn.disabled = false;
     }
+  } catch (e) {
+    msgEl.style.color = '#ef4444';
+    msgEl.textContent = 'Error de conexion';
+    btn.disabled = false;
   }
 }
 
@@ -852,13 +885,23 @@ document.getElementById('search-input').addEventListener('input', (e) => {
 });
 
 map.on('popupopen', function(e) {
-  const canvas = e.popup.getElement().querySelector('canvas');
+  const el = e.popup.getElement();
+  const canvas = el.querySelector('canvas');
   if (canvas && canvas.id) {
     const props = e.popup._source?.feature?.properties;
     if (props) {
       setTimeout(() => renderFloraChart(canvas.id, props.scientific), 50);
     }
   }
+
+  el.querySelectorAll('.meas-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const gid = parseInt(btn.dataset.gid);
+      const scientific = btn.dataset.scientific || '';
+      const common = btn.dataset.common || '';
+      openMeasurementModal(gid, scientific, common);
+    });
+  });
 });
 
 // === Barra de escala ===
@@ -933,6 +976,43 @@ new LocationControl().addTo(map);
   document.body.appendChild(overlay);
 })();
 
+// === Modal de medicion 2026 ===
+(function() {
+  const overlay = document.createElement('div');
+  overlay.id = 'measurement-overlay';
+  overlay.className = 'metadata-overlay';
+  overlay.style.display = 'none';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMeasurementModal(); });
+  overlay.innerHTML = `
+    <div class="meas-modal">
+      <div class="metadata-header">
+        <h3><i class="fas fa-ruler" style="color:#a855f7"></i> Registrar Medicion 2026</h3>
+        <button class="metadata-close" onclick="closeMeasurementModal()">&times;</button>
+      </div>
+      <div class="meas-body">
+        <div class="meas-field"><span class="meas-label">Especie:</span> <span id="meas-scientific" style="font-style:italic"></span></div>
+        <div class="meas-field"><span class="meas-label">Nombre comun:</span> <span id="meas-common"></span></div>
+        <input type="hidden" id="meas-gid" />
+        <div class="meas-field" style="margin-top:12px">
+          <label class="meas-label" for="meas-value">Valor (>= 0):</label>
+          <input id="meas-value" type="number" min="0" placeholder="Ingrese el conteo"
+            style="width:100%;padding:8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;margin-top:4px" />
+        </div>
+        <div class="meas-field" style="margin-top:10px">
+          <label class="meas-label" for="meas-code">Codigo de acceso:</label>
+          <input id="meas-code" type="password" placeholder="Codigo del tecnico"
+            style="width:100%;padding:8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;margin-top:4px" />
+        </div>
+        <div id="meas-msg" style="font-size:12px;margin-top:8px"></div>
+        <button id="meas-submit-btn" onclick="submitMeasurement()"
+          style="width:100%;margin-top:12px;padding:8px;border-radius:6px;border:none;background:#a855f7;color:white;font-size:13px;cursor:pointer;font-weight:600">
+          Guardar medicion
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+})();
+
 function showMetadata(layerId) {
   var cfg = LAYERS.find(function(l) { return l.id === layerId; });
   var meta = LAYER_METADATA[layerId];
@@ -966,7 +1046,15 @@ function closeMetadata() {
   document.getElementById('metadata-overlay').style.display = 'none';
 }
 
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMetadata(); });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('measurement-overlay').style.display === 'flex') {
+      closeMeasurementModal();
+    } else {
+      closeMetadata();
+    }
+  }
+});
 
 buildSidebar();
 buildLegend();

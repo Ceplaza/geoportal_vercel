@@ -230,6 +230,17 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
 .meta-table tr + tr td { border-top: 1px solid #334155; }
 .meta-key { color: #64748b; font-weight: 500; white-space: nowrap; width: 38%; padding-right: 12px; }
 
+/* Modal de medicion 2026 */
+.meas-modal {
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+  width: 90%; max-width: 420px; max-height: 80vh;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+}
+.meas-body { padding: 16px 20px; }
+.meas-field { font-size: 13px; color: #cbd5e1; }
+.meas-label { color: #94a3b8; font-weight: 500; font-size: 12px; }
+
 /* Panel de filtros */
 #filter-panel { padding: 0 12px 12px; }
 .filter-panel {
