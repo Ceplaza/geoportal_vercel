@@ -59,6 +59,7 @@ const LAYERS = [
     icon: 'fa-bug',
     color: '#ef4444',
     geomType: 'point',
+    gidField: 'id_0',
     displayFields: ['scientific', 'iconic_tax', 'species_gu'],
     imageField: 'image_url',
     linkField: 'url',
@@ -228,7 +229,8 @@ function escapeHtml(s) {
 
 function buildAvesPopup(props, layerCfg) {
   const color = layerCfg.color;
-  const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
+  const gidFld = layerCfg.gidField || 'gid';
+  const title = props[layerCfg.labelField] || `#${props[gidFld] || ''}`;
   const titleClean = title.charAt(0).toUpperCase() + title.slice(1);
 
   let html = `<div class="popup-content" style="max-width:300px">`;
@@ -260,6 +262,7 @@ function buildAvesPopup(props, layerCfg) {
 
 function buildFloraPopup(props, layerCfg) {
   const color = layerCfg.color;
+  const gidFld = layerCfg.gidField || 'gid';
   const title = props[layerCfg.labelField] || '';
   const titleClean = title ? title.charAt(0).toUpperCase() + title.slice(1) : '';
 
@@ -296,7 +299,7 @@ function buildFloraPopup(props, layerCfg) {
     html += `<div style="margin-top:8px;padding:6px 10px;background:#a855f715;border:1px solid #a855f733;border-radius:6px;font-size:12px"><span style="color:#a855f7;font-weight:600">Medicion 2026:</span> <span style="color:#e2e8f0">${escapeHtml(props.medicion_2026)}</span></div>`;
   }
 
-  const gid = props.gid;
+  const gid = props[gidFld];
   html += `
     <div style="margin-top:10px;border-top:1px solid #334155;padding-top:8px">
       <button class="meas-btn"
@@ -391,7 +394,8 @@ function buildPopup(props, layerCfg) {
 
   const color = layerCfg.color;
   const icon = layerCfg.icon;
-  const title = props[layerCfg.labelField] || `#${props.gid || ''}`;
+  const gidFld = layerCfg.gidField || 'gid';
+  const title = props[layerCfg.labelField] || `#${props[gidFld] || ''}`;
 
   let html = `<div class="popup-content">`;
   html += `<div class="popup-header">`;
@@ -458,7 +462,8 @@ async function toggleLayer(layerId) {
   showLoading(`Cargando ${cfg.name}...`);
 
   try {
-    const fields = ['gid', 'geom', cfg.labelField, cfg.imageField, cfg.linkField, ...cfg.displayFields].filter(v => v != null).filter((v,i,a) => a.indexOf(v) === i).join(',');
+    const gidFld = cfg.gidField || 'gid';
+    const fields = [gidFld, 'geom', cfg.labelField, cfg.imageField, cfg.linkField, ...cfg.displayFields].filter(v => v != null).filter((v,i,a) => a.indexOf(v) === i).join(',');
     const url = `${SUPABASE_URL}/rest/v1/${layerId}?select=${encodeURIComponent(fields)}&limit=${cfg.maxFeatures}`;
 
     const res = await fetch(url, {
