@@ -60,7 +60,7 @@ const LAYERS = [
     color: '#ef4444',
     geomType: 'point',
     gidField: 'id_0',
-    displayFields: ['scientific', 'iconic_tax', 'species_gu'],
+    displayFields: ['scientific', 'iconic_tax', 'species_gu', 'place_gues', 'time_obser'],
     imageField: 'image_url',
     linkField: 'url',
     labelField: 'common_nam',
@@ -388,8 +388,41 @@ async function submitMeasurement() {
   }
 }
 
+function buildEntomofaunaPopup(props, layerCfg) {
+  const color = layerCfg.color;
+  const title = props[layerCfg.labelField] || '';
+  const titleClean = title ? title.charAt(0).toUpperCase() + title.slice(1) : '';
+
+  let html = `<div class="popup-content" style="max-width:300px">`;
+
+  if (props[layerCfg.imageField]) {
+    html += `<img class="popup-img" src="${escapeHtml(props[layerCfg.imageField])}" onerror="this.style.display='none'" />`;
+  }
+
+  html += `<div style="padding:10px">`;
+  html += `<div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#e2e8f0">${escapeHtml(titleClean)}</div>`;
+  html += `<div class="popup-grid">`;
+  html += `<span class="popup-key">Especie</span><span class="popup-val" style="font-style:italic">${escapeHtml(props.scientific) || ''}</span>`;
+  html += `<span class="popup-key">Taxon</span><span class="popup-val">${escapeHtml(props.iconic_tax) || ''}</span>`;
+  html += `<span class="popup-key">Especie (GH)</span><span class="popup-val">${escapeHtml(props.species_gu) || ''}</span>`;
+  if (props.place_gues) {
+    html += `<span class="popup-key">Ubicación</span><span class="popup-val">${escapeHtml(props.place_gues)}</span>`;
+  }
+  if (props.time_obser) {
+    html += `<span class="popup-key">Observación</span><span class="popup-val">${escapeHtml(props.time_obser)}</span>`;
+  }
+  html += `</div>`;
+
+  if (props[layerCfg.linkField]) {
+    html += `<a class="popup-link" href="${escapeHtml(props[layerCfg.linkField])}" target="_blank"><i class="fas fa-external-link-alt"></i> Ver en iNaturalist</a>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
 function buildPopup(props, layerCfg) {
   if (layerCfg.id === 'ave_ucuenca') return buildAvesPopup(props, layerCfg);
+  if (layerCfg.id === 'entomofauna') return buildEntomofaunaPopup(props, layerCfg);
   if (layerCfg.isFlora) return buildFloraPopup(props, layerCfg);
 
   const color = layerCfg.color;
