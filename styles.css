@@ -91,7 +91,7 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
 #loading-overlay p { font-size: 13px; color: #94a3b8; }
 
 #stats-bar {
-  position: absolute; bottom: 20px; right: 20px; z-index: 999;
+  position: absolute; bottom: 40px; right: 20px; z-index: 999;
   display: flex; gap: 8px;
 }
 .stat-chip {
@@ -281,6 +281,6 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; display: f
 @media (max-width: 768px) {
   #sidebar { position: absolute; height: 100%; z-index: 1000; }
   #sidebar.collapsed { transform: translateX(-320px); }
-  #stats-bar { bottom: 10px; right: 10px; flex-wrap: wrap; }
+  #stats-bar { bottom: 40px; right: 10px; flex-wrap: wrap; }
   .metadata-modal { width: 95%; max-width: none; }
 }
