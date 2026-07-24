@@ -32,7 +32,7 @@ const LAYERS = [
   },
   {
     id: 'entomofauna',
-    name: 'Entomofauna',
+    name: 'Invertebrados terrestres',
     desc: 'Observaciones de insectos (iNaturalist)',
     icon: 'fa-bug',
     color: '#ef4444',
@@ -98,7 +98,7 @@ const LAYER_METADATA = {
     responsible: 'iNaturalist / Universidad de Cuenca'
   },
   entomofauna: {
-    source: 'iNaturalist (observaciones de entomofauna)',
+    source: 'iNaturalist (observaciones de invertebrados terrestres)',
     srs: 'WGS 84 (EPSG:4326)',
     fields: ['common_nam', 'scientific', 'species_gu', 'image_url', 'url'],
     updateDate: 'Continua',
@@ -128,7 +128,7 @@ const FILTERABLE_LAYERS = {
     optionalDropdowns: []
   },
   entomofauna: {
-    name: 'Entomofauna',
+    name: 'Invertebrados terrestres',
     dropdowns: [],
     searches: [
       { field: 'species_gu', label: 'Nombre comun' }
